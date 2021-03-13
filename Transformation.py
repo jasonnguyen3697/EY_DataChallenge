@@ -33,3 +33,5 @@ Dataset_ED["Check TreatDrNr-Act. Depart"] = Dataset_ED["Calculated TimeDiff Trea
 
 Dataset_ED["Calculated TimeDiff Arrival-Actual Depart (mins)"] = (Dataset_ED["Depart Actual Date"] - Dataset_ED["Arrival Date"]).dt.seconds/60.0
 Dataset_ED["Check Arrival-Actual Depart"] = Dataset_ED["Calculated TimeDiff Arrival-Actual Depart (mins)"] == Dataset_ED["TimeDiff Arrival-Actual Depart (mins)"]
+
+# proxy for wait time
