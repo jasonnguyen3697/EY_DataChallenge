@@ -52,7 +52,6 @@ for date in list(CurrentPresentationsDf["Datetime"].unique()):
     CurrentPresentationsDf.loc[CurrentPresentationsDf["Datetime"]==date, "Expected Ranking"] = rankingExpected
 
 # calculate population treated after their expected ordering
-dateTimeTreatedLaterThanOrdering = list(CurrentPresentationsDf.loc[CurrentPresentationsDf["Actual Ranking"] > CurrentPresentationsDf["Expected Ranking"]]["Datetime"].unique())
 treatedLaterThanOrdering = CurrentPresentationsDf.loc[CurrentPresentationsDf["Actual Ranking"] > CurrentPresentationsDf["Expected Ranking"]][["MRN", "Presentation Visit Number"]].drop_duplicates(subset=["MRN", "Presentation Visit Number"], keep="first")
 
 # add flag to transformed dataset
