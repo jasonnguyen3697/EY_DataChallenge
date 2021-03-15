@@ -14,6 +14,9 @@ import datetime
 # read dataset
 Dataset_ED = pd.read_excel("Generic ED 2009.xlsx", sheet_name="Generic ED Data")
 
+# drop unwanted data i.e. patients for deletion
+Dataset_ED.drop(index=Dataset_ED.loc[Dataset_ED["Depart Status Code"].isin(["ZZ", "D"])].index, inplace=True)
+
 # calculate hour value for each patient's arrival
 Dataset_ED["Arrival Hour"] = Dataset_ED["Arrival Date"].dt.hour
 # calculate month value for each patient's arrival
