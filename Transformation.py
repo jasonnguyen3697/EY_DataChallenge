@@ -51,6 +51,17 @@ for date in list(CurrentPresentationsDf["Datetime"].unique()):
     rankingExpected = currentPresentations["Expected Dr Seen"].rank(method="first", ascending=True)
     CurrentPresentationsDf.loc[CurrentPresentationsDf["Datetime"]==date, "Expected Ranking"] = rankingExpected
 
+# calculate population treated after their expected ordering
+dateTimeTreatedLaterThanOrdering = list(CurrentPresentationsDf.loc[CurrentPresentationsDf["Actual Ranking"] > CurrentPresentationsDf["Expected Ranking"]]["Datetime"].unique())
+treatedLaterThanOrdering = CurrentPresentationsDf.loc[CurrentPresentationsDf["Actual Ranking"] > CurrentPresentationsDf["Expected Ranking"]][["MRN", "Presentation Visit Number"]].drop_duplicates(subset=["MRN", "Presentation Visit Number"], keep="first")
+
+# add flag to transformed dataset
+Dataset_ED = Dataset_ED.merge(treatedLaterThanOrdering, how="left", on=["MRN", "Presentation Visit Number"], indicator=True)
+mask = Dataset_ED["_merge"] == "both"
+Dataset_ED.loc[mask, "TreatedLaterThanOrdering"] = 1
+Dataset_ED.loc[~mask, "TreatedLaterThanOrdering"] = 0
+Dataset_ED.drop(labels=["_merge"], axis="columns", inplace=True)
+
 # calculate total wait time between arrival and first doctor inspection
 Dataset_ED["TimeDiff Arrival-TreatDrNr (mins)"] = (Dataset_ED["Dr Seen Date"] - Dataset_ED["Arrival Date"]).dt.seconds/60.0
 
