@@ -15,7 +15,11 @@ import datetime
 Dataset_ED = pd.read_excel("Generic ED 2009.xlsx", sheet_name="Generic ED Data")
 
 # calculate hour value for each patient's arrival
-Dataset_ED["Arrival Hour"] = [d.hour for d in Dataset_ED["Arrival Date"]]
+Dataset_ED["Arrival Hour"] = Dataset_ED["Arrival Date"].dt.hour
+# calculate month value for each patient's arrival
+Dataset_ED["Arrival Month"] = Dataset_ED["Arrival Date"].dt.month
+# calculate day of week value
+Dataset_ED["Arrival Day Of Week"] = Dataset_ED["Arrival Date"].dt.dayofweek
 
 # calculate total patients in ED at the point of new patient's arrival
 # generate table of patients currently presenting at each arrival time
