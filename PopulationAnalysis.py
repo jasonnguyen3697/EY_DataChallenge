@@ -28,14 +28,14 @@ def summariseTukeyTest(tukeydf, factor):
     for i in range(len(tukeyTrue)):
         group1 = tukeyTrue.iloc[i]["group1"]
         group2 = tukeyTrue.iloc[i]["group2"]
-        tukeySummaryDf.loc[tukeySummaryDf["group1"]==group1, "StatisticallySignificantInstance"] += 1
-        tukeySummaryDf.loc[tukeySummaryDf["group2"]==group2, "StatisticallySignificantInstance"] += 1
+        tukeySummaryDf.loc[tukeySummaryDf[factor]==group1, "StatisticallySignificantInstance"] += 1
+        tukeySummaryDf.loc[tukeySummaryDf[factor]==group2, "StatisticallySignificantInstance"] += 1
         if tukeyTrue.iloc[i]["meandiff"] < 0:
-            tukeySummaryDf.loc[tukeySummaryDf["group1"]==group1, "Worse"] += 1
-            tukeySummaryDf.loc[tukeySummaryDf["group2"]==group2, "Better"] += 1
+            tukeySummaryDf.loc[tukeySummaryDf[factor]==group1, "Worse"] += 1
+            tukeySummaryDf.loc[tukeySummaryDf[factor]==group2, "Better"] += 1
         else:
-            tukeySummaryDf.loc[tukeySummaryDf["group1"]==group1, "Better"] += 1
-            tukeySummaryDf.loc[tukeySummaryDf["group2"]==group2, "Worse"] += 1
+            tukeySummaryDf.loc[tukeySummaryDf[factor]==group1, "Better"] += 1
+            tukeySummaryDf.loc[tukeySummaryDf[factor]==group2, "Worse"] += 1
             
     tukeySummaryDf = pd.DataFrame(tukeySummaryDf)
     
@@ -81,13 +81,16 @@ else:
     sumRank_1 = populationRank.loc[populationRank["TreatedLaterThanOrdering"]==1]["Rank"].sum()
     meanRank_1 = sumRank_1/(len(populationRank.loc[populationRank["TreatedLaterThanOrdering"]==1]))
     
-    SumMeanRankTable = pd.DataFrame({"TreatedLaterThanOrdering": [0, 1], "Mean rank": [meanRank_0, meanRank_1]})
+    median_0 = populationRank.loc[populationRank["TreatedLaterThanOrdering"]==0]["LateSeenByDr"].median()
+    median_1 = populationRank.loc[populationRank["TreatedLaterThanOrdering"]==1]["LateSeenByDr"].median()
+    
+    SumMeanRankTable = pd.DataFrame({"TreatedLaterThanOrdering": [0, 1], "Mean rank": [meanRank_0, meanRank_1], "Median": [median_0, median_1]})
     
     print("Mean rank table")
     print(SumMeanRankTable)
 
 # graph density for TreatedLaterThanOrdering and LateSeenByDr
-ax = transformedDataset[["TreatedLaterThanOrdering", "LateSeenByDr"]].pivot(columns="TreatedLaterThanOrdering", values="LateSeenByDr").plot.density(alpha=0.5, figsize=(15, 12))
+ax = transformedDataset[["TreatedLaterThanOrdering", "LateSeenByDr"]].pivot(columns="TreatedLaterThanOrdering", values="LateSeenByDr").plot.density(alpha=0.5, figsize=(15, 12), title="Density Plot Of Length Of Time Patients Receive Medical Treatment Later Than Appropriate Triage Timeframe For Populations TreatedLaterThanOrder = {0, 1}")
 
 # multi-factor linear regression
 # calculate accepatable range
@@ -96,22 +99,33 @@ threeStd = transformedDataset["LateSeenByDr"].std() * 3
 lowerBound = mean - threeStd
 upperBound = mean + threeStd
 
+populationRank = transformedDataset.loc[~transformedDataset["LateSeenByDr"].isna()][["LateSeenByDr", "TreatedLaterThanOrdering"]]
+mask_0 = populationRank["TreatedLaterThanOrdering"]==0
+mask_1 = populationRank["TreatedLaterThanOrdering"]==1
+populationRank.loc[mask_0, "TreatedLaterThanOrdering_0"] = 1
+populationRank.loc[mask_1, "TreatedLaterThanOrdering_1"] = 1
+populationRank.loc[mask_1, "TreatedLaterThanOrdering_0"] = 0
+populationRank.loc[mask_0, "TreatedLaterThanOrdering_1"] = 0
+
 ## using scikit-learn
-#reg = linear_model.LinearRegression()
-#reg.fit(transformedDataset.loc[~transformedDataset["LateSeenByDr"].isna()][["TriagePriority"]], transformedDataset.loc[~transformedDataset["LateSeenByDr"].isna()]["LateSeenByDr"])
-#
-## calculate r2 of model
-#r2 = reg.score(transformedDataset.loc[~transformedDataset["LateSeenByDr"].isna()][["Triage 1 count", "Triage 2 count", "Triage 3 count", "Triage 4 count", "Triage 5 count"]], transformedDataset.loc[~transformedDataset["LateSeenByDr"].isna()]["LateSeenByDr"])
+reg = linear_model.Lasso()
+reg.fit(populationRank.loc[(~populationRank["LateSeenByDr"].isna()) & (populationRank["LateSeenByDr"] >= lowerBound) & (populationRank["LateSeenByDr"] <= upperBound)][["TreatedLaterThanOrdering_0", "TreatedLaterThanOrdering_1"]], populationRank.loc[(~populationRank["LateSeenByDr"].isna()) & (populationRank["LateSeenByDr"] >= lowerBound) & (populationRank["LateSeenByDr"] <= upperBound)]["LateSeenByDr"])
+
+# calculate r2 of model
+r2 = reg.score(populationRank.loc[(~populationRank["LateSeenByDr"].isna()) & (populationRank["LateSeenByDr"] >= lowerBound) & (populationRank["LateSeenByDr"] <= upperBound)][["TreatedLaterThanOrdering_0", "TreatedLaterThanOrdering_1"]], populationRank.loc[(~populationRank["LateSeenByDr"].isna()) & (populationRank["LateSeenByDr"] >= lowerBound) & (populationRank["LateSeenByDr"] <= upperBound)]["LateSeenByDr"])
+
+print("R2: {}".format(r2))
+print("Coef: {}".format(reg.coef_))
 
 # using statsmodel
-est = sm.OLS(transformedDataset.loc[(~transformedDataset["LateSeenByDr"].isna()) & (transformedDataset["LateSeenByDr"] >= lowerBound) & (transformedDataset["LateSeenByDr"] <= upperBound)]["LateSeenByDr"], transformedDataset.loc[(~transformedDataset["LateSeenByDr"].isna()) & (transformedDataset["LateSeenByDr"] >= lowerBound) & (transformedDataset["LateSeenByDr"] <= upperBound)][["Triage 1 count", "Triage 2 count", "Triage 3 count", "Triage 4 count", "Triage 5 count"]])
+est = sm.OLS(populationRank.loc[(~populationRank["LateSeenByDr"].isna()) & (populationRank["LateSeenByDr"] >= lowerBound) & (populationRank["LateSeenByDr"] <= upperBound)]["LateSeenByDr"], populationRank.loc[(~populationRank["LateSeenByDr"].isna()) & (populationRank["LateSeenByDr"] >= lowerBound) & (populationRank["LateSeenByDr"] <= upperBound)][["TreatedLaterThanOrdering_0", "TreatedLaterThanOrdering_1"]])
 
 est = est.fit()
 
 print(est.summary())
 
 # calculate statistical significance of ArrivalMonth, and ArrivalDayOfWeek
-formula = "LateSeenByDr ~ C(ArrivalMonth) + C(ArrivalDayOfWeek)"
+formula = "LateSeenByDr ~ C(ArrivalMonth)*C(ArrivalDayOfWeek)"
 lm = sm_formula.ols(formula, transformedDataset.loc[~(transformedDataset["LateSeenByDr"].isna()) & (transformedDataset["LateSeenByDr"] >= lowerBound) & (transformedDataset["LateSeenByDr"] <= upperBound)]).fit()
 print(lm.summary())
 
@@ -136,3 +150,11 @@ print("Day of the week Tukey test results")
 print(tukeyResultsDayOfWeekSummary)
 
 # test 
+
+# output results
+with pd.ExcelWriter("AnalysisOutput.xlsx") as excelwriter:
+    SumMeanRankTable.to_excel(excelwriter, sheet_name="MeanRank")
+    tukeyResultsMonth.to_excel(excelwriter, sheet_name="TukeyResultsMonth")
+    tukeyResultsSummary.to_excel(excelwriter, sheet_name="TukeyResultsMonthSummary")
+    tukeyResultsDayOfWeek.to_excel(excelwriter, sheet_name="TukeyResultsDayOfWeek")
+    tukeyResultsDayOfWeekSummary.to_excel(excelwriter, sheet_name="TukeyResultsDayOfWeekSummary")
