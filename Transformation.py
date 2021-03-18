@@ -33,22 +33,24 @@ CurrentPresentations = {"Datetime": [], "MRN": [], "Presentation Visit Number": 
 TriagePriorityCount = {"Triage 1 count": [0 for i in range(len(Dataset_ED))], "Triage 2 count": [0 for i in range(len(Dataset_ED))], "Triage 3 count": [0 for i in range(len(Dataset_ED))], "Triage 4 count": [0 for i in range(len(Dataset_ED))], "Triage 5 count": [0 for i in range(len(Dataset_ED))]}
 for i in range(len(Dataset_ED)):
     currentArrivalDate = Dataset_ED.iloc[i]["Arrival Date"]
-    current_presentations = Dataset_ED.loc[(Dataset_ED["Depart Actual Date"] > currentArrivalDate) & (Dataset_ED["Arrival Date"] <= currentArrivalDate)][["Arrival Date", "MRN", "Presentation Visit Number", "Triage Priority", "Dr Seen Date"]]
-    CurrentPresentations["Datetime"] += [currentArrivalDate for i in range(len(current_presentations))]
-    CurrentPresentations["Presentation Visit Number"] += [current_presentations.iloc[i]["Presentation Visit Number"] for i in range(len(current_presentations))]
-    CurrentPresentations["MRN"] += [current_presentations.iloc[i]["MRN"] for i in range(len(current_presentations))]
-    CurrentPresentations["Triage Priority"] += [current_presentations.iloc[i]["Triage Priority"] for i in range(len(current_presentations))]
-    CurrentPresentations["Arrival Date"] += [current_presentations.iloc[i]["Arrival Date"] for i in range(len(current_presentations))]
-    CurrentPresentations["Expected Dr Seen"] += [current_presentations.iloc[i]["Arrival Date"] + datetime.timedelta(minutes=triageTimeLimit[current_presentations.iloc[i]["Triage Priority"]-1]) for i in range(len(current_presentations))]
-    CurrentPresentations["Actual Dr Seen"] += [current_presentations.iloc[i]["Dr Seen Date"] for i in range(len(current_presentations))]
+    current_presentations = Dataset_ED.loc[(Dataset_ED["Dr Seen Date"] > currentArrivalDate) & (Dataset_ED["Arrival Date"] <= currentArrivalDate)][["Arrival Date", "MRN", "Presentation Visit Number", "Triage Priority", "Dr Seen Date"]]
+    CurrentPresentations["Datetime"] += [currentArrivalDate for k in range(len(current_presentations))]
+    CurrentPresentations["Presentation Visit Number"] += [current_presentations.iloc[k]["Presentation Visit Number"] for k in range(len(current_presentations))]
+    CurrentPresentations["MRN"] += [current_presentations.iloc[k]["MRN"] for k in range(len(current_presentations))]
+    CurrentPresentations["Triage Priority"] += [current_presentations.iloc[k]["Triage Priority"] for k in range(len(current_presentations))]
+    CurrentPresentations["Arrival Date"] += [current_presentations.iloc[k]["Arrival Date"] for k in range(len(current_presentations))]
+    CurrentPresentations["Expected Dr Seen"] += [current_presentations.iloc[k]["Arrival Date"] + datetime.timedelta(minutes=triageTimeLimit[current_presentations.iloc[k]["Triage Priority"]-1]) for k in range(len(current_presentations))]
+    CurrentPresentations["Actual Dr Seen"] += [current_presentations.iloc[k]["Dr Seen Date"] for k in range(len(current_presentations))]
     for j in range(1, 6):
         TriagePriorityCount["Triage {} count".format(j)][i] = len(current_presentations.loc[(current_presentations["Arrival Date"] < currentArrivalDate) & (current_presentations["Triage Priority"] == j)])
     TotalPatientsInEDAtArrival[i] = sum([TriagePriorityCount["Triage {} count".format(j)][i] for j in range(1, 6)])
         
-Dataset_ED["TotalPatientsInEDAtArrival"] = TotalPatientsInEDAtArrival
+Dataset_ED["TotalPatientsInEDWaitRoom"] = TotalPatientsInEDAtArrival
 for key in TriagePriorityCount.keys():
     Dataset_ED[key] = TriagePriorityCount[key]
 CurrentPresentationsDf = pd.DataFrame(CurrentPresentations)
+
+Dataset_ED["Expected Dr Seen"] = [Dataset_ED.iloc[i]["Arrival Date"] + datetime.timedelta(minutes=triageTimeLimit[Dataset_ED.iloc[i]["Triage Priority"]-1]) for i in range(len(Dataset_ED))]
 
 # calculate relative order of priority for each presentation instance
 for date in list(CurrentPresentationsDf["Datetime"].unique()):
@@ -92,4 +94,4 @@ OnTimePopulation = Dataset_ED.loc[Dataset_ED["LateFlag"]==0]
 
 with pd.ExcelWriter("output.xlsx") as xWriter:
     Dataset_ED.to_excel(xWriter, sheet_name="Dataset_ED_transformed", index=False)
-    CurrentPresentationsDf.to_excel(xWriter, sheet_name="Presentation Timeline", index=False)
+    CurrentPresentationsDf.to_excel(xWriter, sheet_name="ED Wait Room Timeline", index=False)
